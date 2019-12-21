@@ -50,73 +50,109 @@ def mapsin(x, minx, maxx, ncycles):
 	return x
 
 
+def mappower(x, minx, maxx, power):
+	x -= minx
+	x /= (maxx - minx)
+	x **= power
+	return x
+
+
+
+def colorWheel(x):
+	return colorsys.hsv_to_rgb(x, 1, 1)
+
+def redBlue(x):
+	if x < 0.5: 
+		return (1,0,0)
+	return (0,0,1)
+
+def redBlueBlack(x):
+	colors = [(0,0,0), (1,0,0), (0,0,0), (0,0,1)]
+	return colors[ int(x*len(colors)) ]
+
+
+def allWhite(x):
+	return (1,1,1)
+
+def allYellow(x):
+	return (1,1,0.5)
+
+def lowSat(x):
+	return colorsys.hsv_to_rgb(x, 0.5, 1)
 
 
 class Pattern:
-	def __init__(self, strand):
+	def __init__(self, strand, palette):
 		self._time = 0
 		self._strand = strand
+		self._palette = palette
 		self._delta = 0
 
 	def _update(self):
 		assert False
 
 	def process(self, delta):
-		self._delta = delta
 		self._time += delta
+		self._delta = delta
 		self._update()
 		self._strand.push()
 
 
 
 class FadeIn(Pattern):
-	def __init__(self, strand, period):
-		super().__init__(strand)
+	def __init__(self, strand, palette, period):
+		super().__init__(strand, palette)
 		self._period = period
 		self._curColor = (1,0,0)
 
 	def _update(self):
 		if self._time > self._period:
 			self._time -= self._period
-			self._curColor = colorsys.hsv_to_rgb(random.random(), 1, 1)
+			self._curColor = self._palette(random.random())
+
+		scale = mappower(self._time/self._period, 0, 1, 0.5)
 
 		for i in range(len(self._strand)):
-			strand[i] = tuple(comp * (self._time/self._period) for comp in self._curColor)
+			strand[i] = scaleColor(scale, self._curColor)
 
 
 			
 class FadeOut(Pattern):
-	def __init__(self, strand, period):
-		super().__init__(strand)
+	def __init__(self, strand, palette, period):
+		super().__init__(strand, palette)
 		self._period = period
 		self._curColor = (1,0,0)
 
 	def _update(self):
 		if self._time > self._period:
 			self._time -= self._period
-			self._curColor = colorsys.hsv_to_rgb(random.random(), 1, 1)
+			self._curColor = self._palette(random.random())
+		
+		scale = mappower(self._time/self._period, 1, 0, 0.5)
 
 		for i in range(len(self._strand)):
-			strand[i] = tuple(comp * (1-self._time/self._period) for comp in self._curColor)
+			strand[i] = scaleColor(scale, self._curColor)
 
 
 class FadeInOut(Pattern):
-	def __init__(self, strand, period):
-		super().__init__(strand)
+	def __init__(self, strand, palette, period):
+		super().__init__(strand, palette)
 		self._period = period
 		self._curColor = (1,0,0)
 
 	def _update(self):
 		if self._time > self._period:
 			self._time -= self._period
-			self._curColor = colorsys.hsv_to_rgb(random.random(), 1, 1)
+			self._curColor = self._palette(random.random())
 
 
 		scale = None
 		if self._time < (self._period/2):
-			scale = self._time/(self._period/2)
+			# scale = self._time/(self._period/2)
+			scale = mappower(self._time/self._period, 0, 0.5, 0.5)
 		else:
-			scale = color_utils.remap(self._time, self._period/2, self._period, 1, 0)
+			# scale = color_utils.remap(self._time, self._period/2, self._period, 1, 0)
+			scale = mappower(self._time/self._period, 1, 0.5, 0.5)
 
 		for i in range(len(self._strand)):
 			strand[i] = tuple(comp * (scale) for comp in self._curColor)
@@ -124,56 +160,22 @@ class FadeInOut(Pattern):
 
 
 class MovingRainbow(Pattern):
-	def __init__(self, strand, period, ncycles):
-		super().__init__(strand)
+	def __init__(self, strand, palette, period, ncycles):
+		super().__init__(strand, palette)
 		self._period = period
 		self._ncycles = ncycles
 
 	def _update(self):
 		offset = self._time/self._period
 		for i in range(len(self._strand)):
-			strand[i] = colorsys.hsv_to_rgb((offset + (i*self._ncycles)/len(self._strand)) % 1, 1, 1)
+			strand[i] = self._palette((offset + (i*self._ncycles)/len(self._strand)) % 1)
 
 
-
-			
-# class Trail(Pattern):
-# 	def __init__(self, nheads, strand, moveperiod, colorperiod, initdecay, decay):
-# 		super().__init__(strand)
-# 		self._nheads = nheads
-# 		self._moveperiod = moveperiod
-# 		self._colorperiod = colorperiod
-# 		self._decay = decay
-# 		self._initdecay = initdecay
-# 		self._prevhead = 0	
-	
-
-
-# 	def _update(self):
-# 		basehead = int(len(self._strand) * self._time/self._moveperiod) % len(self._strand)
-# 		heads = []
-# 		for n in range(self._nheads):
-# 			heads.append(basehead + len(self._strand) // self._nheads
-# 		# head = int(len(self._strand) * self._time/self._moveperiod) % len(self._strand)
-
-# 		curColor = colorsys.hsv_to_rgb((self._time / self._colorperiod) % 1, 1, 1)
-
-# 		for i in range(len(self._strand)):
-# 			if i == head:
-# 				strand[i] = (1,1,1)
-# 			elif i == self._prevhead: # just changed since prevhead != head
-# 				strand[i] = scaleColor(self._initdecay, curColor)
-# 			else:
-# 				strand[i] = scaleColor(self._decay, strand[i])
-
-
-
-# 		self._prevhead = head
 
 
 class Trail(Pattern):
-	def __init__(self, strand, nheads, moveperiod, colorperiod, initdecay, decay):
-		super().__init__(strand)
+	def __init__(self, strand, palette, nheads, moveperiod, colorperiod, initdecay, decay):
+		super().__init__(strand, palette)
 		self._nheads = nheads
 		self._moveperiod = moveperiod
 		self._colorperiod = colorperiod
@@ -188,13 +190,10 @@ class Trail(Pattern):
 		heads = []
 		for n in range(self._nheads):
 			heads.append( (basehead + n*len(self._strand) // self._nheads) % len(self._strand) )
-		# head = int(len(self._strand) * self._time/self._moveperiod) % len(self._strand)
-
-		# print(heads)
 
 
 
-		curColor = colorsys.hsv_to_rgb((self._time / self._colorperiod) % 1, 1, 1)
+		curColor = self._palette((self._time / self._colorperiod) % 1)
 
 		for i in range(len(self._strand)):
 			if i in heads:
@@ -204,33 +203,14 @@ class Trail(Pattern):
 			else:
 				strand[i] = scaleColor(self._decay, strand[i])
 
-
-
 		self._prevheads = heads[:]
 
 
 
-
-			
-# class TheatreChase(Pattern):
-# 	def __init__(self, strand, period, width):
-# 		super().__init__(strand)
-# 		self._period = period
-# 		self._width = width
-
-# 	def _update(self):
-# 		offset = int(self._width*self._time/self._period) % self._width
-# 		self._strand.clear()
-# 		for i in range(offset, len(self._strand), self._width):
-# 			strand[i] = (1,1,1)
-
-	
-
-
 			
 class Flicker(Pattern):
-	def __init__(self, strand, period, ontime):
-		super().__init__(strand)
+	def __init__(self, strand, palette, period, ontime):
+		super().__init__(strand, palette)
 		self._period = period
 		self._ontime = ontime
 		self._phases = [random.random()*period for _ in range(len(strand))]
@@ -240,7 +220,7 @@ class Flicker(Pattern):
 			self._phases[i] += self._delta
 			self._phases[i] %= self._period
 			if self._phases[i] < self._ontime:
-				self._strand[i] = scaleColor(mapsin(self._phases[i], 0, self._ontime, 5),(1,1,1))
+				self._strand[i] = scaleColor(mapsin(self._phases[i], 0, self._ontime, 5), self._palette(random.Random(i).random()))
 			else:
 				self._strand[i] = (0,0,0)
 
@@ -262,14 +242,18 @@ if __name__ == '__main__':
 
 
 	patterns = [
-		# FadeIn(strand, 2),
-		# FadeOut(strand, 2)
-		# FadeInOut(strand, 3)
-		# MovingRainbow(strand, 10, len(strand)) # uniform rainbow,
-		# MovingRainbow(strand, 10, 1) 
-		# Trail(strand, 2, 9, 3, 1, 0.995)
-		# TheatreChase(strand, 3, 4)
-		Flicker(strand, 5, 1)
+		(10, FadeIn(strand, colorWheel, 2)),
+		(10, FadeOut(strand, colorWheel, 2)),
+		(10, FadeInOut(strand, colorWheel, 3)),
+		(10, MovingRainbow(strand, colorWheel, 10, len(strand))), # uniform rainbow
+		(10, MovingRainbow(strand, colorWheel, 3, 2) ),
+		(10, MovingRainbow(strand, redBlue, 0.3, len(strand)/6) ),
+		(10, Trail(strand, lambda x:  (1,0,0), 2, 9, 3, 1, 0.995)),
+		(10, Flicker(strand, colorWheel, 5, 1)),
+		(10, Flicker(strand, allYellow, 15, 4)),
+		(10, Flicker(strand, lowSat, 5, 1)),
+
+		
 		
 	]
 
@@ -280,7 +264,7 @@ if __name__ == '__main__':
 
 
 	patternIdx = 0
-	patternTimeRemaining = timePerPattern
+	patternTimeRemaining, curPattern = patterns[patternIdx]
 
 	frameCnt = 0
 	frameCntTimer = 0
@@ -291,7 +275,7 @@ if __name__ == '__main__':
 		delta = time.time() - prevTime
 		prevTime += delta
 
-		patterns[patternIdx].process(targetDelta)
+		curPattern.process(targetDelta)
 		frameCnt += 1
 		frameCntTimer += delta
 
@@ -304,7 +288,7 @@ if __name__ == '__main__':
 		patternTimeRemaining -= delta
 		if patternTimeRemaining <= 0:
 			strand.clear()
-			patternTimeRemaining += timePerPattern
+			patternTimeRemaining, curPattern = patterns[patternIdx]
 			patternIdx = (patternIdx+1) % len(patterns)
 
 
